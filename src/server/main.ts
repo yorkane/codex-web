@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { randomUUID } from "node:crypto";
+import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -184,6 +185,68 @@ function errorMessage(error: unknown): string {
   return String(error);
 }
 
+function readContextWindowFromConfig(): number | null {
+  const configPaths = [
+    path.join(os.homedir(), ".codex", "config.toml"),
+    path.join(os.homedir(), ".config", "codex", "config.toml"),
+  ];
+  for (const configPath of configPaths) {
+    try {
+      const content = fsSync.readFileSync(configPath, "utf-8");
+      const match = content.match(/^model_context_window\s*=\s*(\d+)\s*$/m);
+      if (match) {
+        const value = Number(match[1]);
+        if (Number.isFinite(value) && value > 0) {
+          return value;
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+function getDefaultContextWindow(): number {
+  const envValue = process.env.CODEX_MODEL_CONTEXT_WINDOW;
+  if (envValue != null) {
+    const parsed = Number(envValue);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  const configValue = readContextWindowFromConfig();
+  if (configValue != null) {
+    return configValue;
+  }
+  return 200000;
+}
+
+function injectModelContextWindow(
+  obj: unknown,
+  contextWindow: number,
+  visited: WeakSet<object> = new WeakSet(),
+): void {
+  if (obj == null || typeof obj !== "object") return;
+  if (visited.has(obj as object)) return;
+  visited.add(obj as object);
+
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      injectModelContextWindow(item, contextWindow, visited);
+    }
+    return;
+  }
+
+  for (const key of Object.keys(obj as Record<string, unknown>)) {
+    const value = (obj as Record<string, unknown>)[key];
+    if (key === "model_context_window" || key === "modelContextWindow") {
+      (obj as Record<string, unknown>)[key] = contextWindow;
+    }
+    injectModelContextWindow(value, contextWindow, visited);
+  }
+}
+
 async function getWorkspaceDirectoryEntries({
   directoryPath,
   directoriesOnly,
@@ -332,7 +395,10 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
     });
   });
 
+  const defaultContextWindow = getDefaultContextWindow();
+
   bridgeState.broadcastToRenderer = (message: MainToRendererMessage): void => {
+    injectModelContextWindow(message, defaultContextWindow);
     const payload = JSON.stringify(message);
     for (const socket of sockets) {
       if (socket.readyState === WebSocket.OPEN) {
