@@ -13,7 +13,7 @@
            logEventUrl: gk,
            sdkExceptionUrl: Kk,
 -          networkOverrideFunc: Qk,
-+          networkTimeoutMs: 2000,
++          networkTimeoutMs: 10,
 +          networkOverrideFunc: Qk,
          },
        }),
