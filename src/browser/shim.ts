@@ -89,6 +89,10 @@ type ElectronShimState = {
       ...args: unknown[]
     ) => StatsigGateEvaluation | null;
   };
+  statsigNetworkOverride?: (
+    url: string,
+    options?: { method?: string; body?: unknown; headers?: unknown },
+  ) => Promise<Response>;
 };
 
 type StatsigGateEvaluation = {
@@ -324,6 +328,23 @@ electronShim.overrideAdapter = {
 
     return null;
   },
+};
+
+// 拦截 Statsig 的所有网络请求 (initialize / rgstr / sdk_exception),
+// 返回空配置, 避免本地部署时访问 ab.chatgpt.com / chatgpt.com 超时 (10s)
+// 导致首页加载卡顿。所有 feature gate 默认关闭, 符合本地/私有部署场景。
+electronShim.statsigNetworkOverride = async (_url) => {
+  const empty = {
+    feature_gates: {},
+    dynamic_configs: {},
+    layer_configs: {},
+    time: Date.now(),
+    has_updates: true,
+  };
+  return new Response(JSON.stringify(empty), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
 };
 
 const initialRoute = mapBrowserPathToInitialRoute(
