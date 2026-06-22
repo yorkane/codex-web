@@ -8,12 +8,3 @@
          networkConfig: {
            api: Gk,
            logEventUrl: gk,
-@@ -28034,7 +28035,7 @@
-           api: Gk,
-           logEventUrl: gk,
-           sdkExceptionUrl: Kk,
--          networkOverrideFunc: Qk,
-+          networkOverrideFunc: window.__ELECTRON_SHIM__.statsigNetworkOverride ?? Qk,
-         },
-       }),
-       (t[42] = N))
