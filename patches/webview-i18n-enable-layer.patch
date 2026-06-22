@@ -1,0 +1,15 @@
+--- a/webview/assets/preload.js
++++ b/webview/assets/preload.js
+@@ -13076,6 +13076,12 @@
+ 			value: false
+ 		};
+ 		return null;
++	}, getLayerOverride(e) {
++		if (e.name === "72216192") return {
++			...e,
++			__value: { ...e.__value, enable_i18n: true }
++		};
++		return null;
+ 	} };
+ 	initialRoute = mapBrowserPathToInitialRoute(window.location.pathname, window.location.search);
+ 	electronShim.initialRoute = initialRoute.memoryPath;

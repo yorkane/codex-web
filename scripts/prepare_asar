@@ -18,9 +18,9 @@ if [[ -n "${DEV:-}" ]]; then
 else
   patched_files=()
   while IFS= read -r patched_file; do
-    patched_files+=("$patched_file")
+    [ -e "$patched_file" ] && patched_files+=("$patched_file")
   done < <(
-    awk '/^\+\+\+ b\//{sub(/^\+\+\+ b\//, "scratch/asar/"); print}' patches/*.patch | sort -u
+    awk '/^\+\+\+ b\//{sub(/^\+\+\+ b\//, "scratch/asar/"); sub(/\t.*/, ""); print}' patches/*.patch | sort -u
   )
   prettier --ignore-path /dev/null --ignore-unknown --write "${patched_files[@]}"
 fi
@@ -35,6 +35,12 @@ patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-ele
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-prosemirror-inputmode.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-use-atfs-for-local-files.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-prompt-search-param.patch
+# 默认 locale 改为简体中文 (覆盖 locale-resolver*.js 里的硬编码默认值)
+#   该文件是压缩单行, var t=`en-US` 是 SDK 默认 locale
+LOCALE_FILE="$(ls scratch/asar/webview/assets/locale-resolver-*.js 2>/dev/null | head -1)"
+if [ -n "$LOCALE_FILE" ]; then
+  sed -i 's/var t=`en-US`/var t=`zh-CN`/' "$LOCALE_FILE"
+fi
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-statsig-override-adapter.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-shell.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-webview.patch
