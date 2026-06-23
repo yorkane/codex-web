@@ -44,4 +44,14 @@ fi
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-statsig-override-adapter.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-shell.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-webview.patch
+# 默认模型替换: 把前端硬编码的 gpt-5.5 默认/fallback 改为 ${CODEX_WEB_DEFAULT_MODEL:-deepseek-v4-pro}
+#   只替换默认值位置, 不动判断逻辑(===)和模型列表([])
+DEFAULT_MODEL="${CODEX_WEB_DEFAULT_MODEL:-deepseek-v4-pro}"
+echo "[prepare_asar] replacing frontend default model gpt-5.5 -> ${DEFAULT_MODEL}"
+# sed 用单引号+变量拼接, 反引号在单引号内是字面量
+sed -i 's/model:`gpt-5.5`/model:`'"${DEFAULT_MODEL}"'`/g' scratch/asar/webview/assets/app-server-manager-signals-*.js
+sed -i 's/t ?? `gpt-5.5`/t ?? `'"${DEFAULT_MODEL}"'`/g' scratch/asar/webview/assets/apps-*.js
+sed -i 's/n(r?.models,`gpt-5.5`)/n(r?.models,`'"${DEFAULT_MODEL}"'`)/g; s/e??`gpt-5.5`/e??`'"${DEFAULT_MODEL}"'`/g' scratch/asar/webview/assets/normalize-model-settings-*.js
+sed -i 's/var y=`gpt-5.5`/var y=`'"${DEFAULT_MODEL}"'`/g' scratch/asar/webview/assets/use-webview-execution-target-*.js
+
 rm -rf scratch/asar/node_modules/better-sqlite3
