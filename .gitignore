@@ -1,3 +1,5 @@
 node_modules/
 scratch*/
 sentry
+/logs/
+.js.map
